@@ -128,7 +128,7 @@ class CampaignStore:
         path = self.root / campaign_id
         path.mkdir(parents=True)
         now = datetime.now().isoformat(timespec="seconds")
-        campaign = Campaign(id=campaign_id, path=path, draft=StoredDraft(name=name, created=now, updated=now))
+        campaign = Campaign(id=campaign_id, path=path, draft=StoredDraft(name=name, created=now, updated=now, label=name))
         self.save_draft(campaign)
         return campaign
 

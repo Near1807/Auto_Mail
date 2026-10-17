@@ -24,7 +24,10 @@ class Settings:
     @classmethod
     def from_dict(cls, data: dict) -> "Settings":
         known = set(cls.__dataclass_fields__)
-        return cls(**{k: v for k, v in data.items() if k in known})
+        values = {k: v for k, v in data.items() if k in known}
+        if "name" in data and "display_name" not in data:  # clé utilisée par app.py
+            values["display_name"] = data["name"]
+        return cls(**values)
 
 
 def load_settings(path: Path) -> Settings:
@@ -71,3 +74,22 @@ class PasswordStore:
             self.backend.delete_password(KEYRING_SERVICE, email.lower())
         except Exception:
             pass
+
+
+def migrate_legacy_password(path: Path, passwords: "PasswordStore") -> bool:
+    """app.py gardait ``app_password`` en clair dans settings.json : on le range dans
+    keyring et on réécrit le fichier sans lui. Retourne True si une migration a eu lieu."""
+    if not path.exists():
+        return False
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (ValueError, TypeError):
+        return False
+    if not isinstance(data, dict) or "app_password" not in data:
+        return False
+    settings = Settings.from_dict(data)
+    password = str(data.get("app_password") or "")
+    if password and settings.email:
+        passwords.set(settings.email, password)
+    save_settings(settings, path)
+    return True

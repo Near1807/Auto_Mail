@@ -219,8 +219,11 @@ class Job:
         if cfg.label and sent_ids:
             try:
                 with ImapSession(cfg.sender_email, cfg.password, factory=self.imap_factory) as imap:
-                    count = imap.apply_label(sent_ids, cfg.label, sleep=self.sleep)
-                self._emit("label", ok=True, count=count, message=f"Libellé « {cfg.label} » appliqué à {count} mail(s).")
+                    count, missing = imap.apply_label(sent_ids, cfg.label, sleep=self.sleep)
+                message = f"Libellé « {cfg.label} » appliqué à {count} mail(s)."
+                if missing:
+                    message += f" {missing} mail(s) introuvable(s) dans « Envoyés » : libelle-les à la main."
+                self._emit("label", ok=not missing, count=count, missing=missing, message=message)
             except Exception as error:
                 self._emit("label", ok=False, count=0, message=f"Libellé non appliqué : {friendly_error(error)}")
 

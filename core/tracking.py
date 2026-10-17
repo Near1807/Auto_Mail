@@ -22,6 +22,7 @@ from .addresses import Recipient, normalize_email
 BASE_COLUMNS = ["email", "status", "reponse", "date", "objet", "erreur"]
 STATUS_SENT = "Envoyé"
 STATUS_ERROR = "Erreur"
+MAX_ERROR_LENGTH = 200  # comme app.py : la colonne reste lisible dans Excel
 
 
 class CsvLockedError(Exception):
@@ -98,7 +99,7 @@ class Tracking:
                 "status": status,
                 "date": (when or datetime.now()).strftime("%Y-%m-%d %H:%M"),
                 "objet": subject,
-                "erreur": error,
+                "erreur": error[:MAX_ERROR_LENGTH],
             }
         )
         row.values.setdefault("reponse", "")

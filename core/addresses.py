@@ -98,10 +98,15 @@ def _looks_like_table(lines: list[str]) -> bool:
     return sum(1 for line in lines if "\t" in line) >= max(1, len(lines) // 2)
 
 
-def _parse_table(lines: list[str]) -> tuple[list[Recipient], list[str], list[str]]:
+def _parse_table(lines: list[str]) -> tuple[list[Recipient], list[str], list[str]] | None:
+    """Tableau à une colonne d'adresses ; ``None`` si plusieurs colonnes en contiennent
+    (une ligne d'adresses copiée en largeur dans Excel : ce n'est pas un tableau de variables)."""
     rows = [[cell.strip() for cell in line.split("\t")] for line in lines]
     width = max(len(r) for r in rows)
     rows = [r + [""] * (width - len(r)) for r in rows]
+    columns_with_emails = {c for r in rows for c in range(width) if "@" in r[c]}
+    if len(columns_with_emails) > 1:
+        return None
 
     def email_score(col: int, body: list[list[str]]) -> int:
         return sum(1 for r in body if is_valid_email(_clean_candidate(r[col])))
@@ -148,8 +153,9 @@ def parse_recipients(text: str) -> ParseResult:
     lines = [line for line in (text or "").splitlines() if line.strip()]
     if not lines:
         return ParseResult()
-    if _looks_like_table(lines):
-        found, invalid, columns = _parse_table(lines)
+    table = _parse_table(lines) if _looks_like_table(lines) else None
+    if table is not None:
+        found, invalid, columns = table
     else:
         found, invalid = _parse_free_text("\n".join(lines))
         columns = []

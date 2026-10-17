@@ -211,15 +211,15 @@ class ImapSession:
                 existing.add(name)
 
     def apply_label(self, message_ids: Iterable[str], label: str,
-                    attempts: int = 4, sleep=time.sleep) -> int:
+                    attempts: int = 4, sleep=time.sleep) -> tuple[int, int]:
         """Applique le libellé aux mails envoyés (retrouvés par Message-ID).
 
         Gmail met parfois quelques secondes à indexer un mail envoyé : on réessaie.
-        Retourne le nombre de mails libellés.
+        Retourne (mails libellés, mails introuvables dans « Envoyés »).
         """
         pending = list(message_ids)
         if not pending:
-            return 0
+            return 0, 0
         self.ensure_label(label)
         self.select(self.special_folder("\\Sent", "[Gmail]/Sent Mail"))
         label_arg = "(" + quote(imap_utf7_encode(label)) + ")"
@@ -241,7 +241,7 @@ class ImapSession:
             if attempt < attempts - 1:
                 sleep(2.0)
                 self.conn.noop()
-        return done
+        return done, len(pending)
 
     def find_replies(self, label: str) -> dict[str, datetime]:
         """Adresses qui ont répondu dans les fils du libellé → date de la première réponse."""

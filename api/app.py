@@ -27,7 +27,7 @@ from core.addresses import parse_recipients
 from core.campaigns import Campaign, CampaignStore
 from core.gmail import AuthError, ImapSession, check_connection, default_imap_factory, default_smtp_factory, friendly_error
 from core.sender import GMAIL_DAILY_LIMIT, Job, SendConfig, estimate_seconds, send_test
-from core.settings import PasswordStore, Settings, load_settings, save_settings
+from core.settings import PasswordStore, Settings, load_settings, migrate_legacy_password, save_settings
 
 
 class SettingsIn(BaseModel):
@@ -99,6 +99,10 @@ def create_app(
     app = FastAPI(title="Auto Mail", docs_url="/api/docs", openapi_url="/api/openapi.json")
     store = CampaignStore(paths.campaigns_dir())
     password_store = passwords or PasswordStore()
+    try:
+        migrate_legacy_password(paths.settings_file(), password_store)
+    except Exception:
+        pass  # keyring indisponible : le fichier reste tel quel, on réessaiera au prochain lancement
     jobs: dict[str, Job] = {}
 
     def settings() -> Settings:
