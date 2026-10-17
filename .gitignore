@@ -1,0 +1,11 @@
+*.pyc
+*.spec.bak
+*.tsbuildinfo
+.DS_Store
+.pytest_cache/
+.venv/
+__pycache__/
+build/
+dist/
+frontend/dist/
+node_modules/

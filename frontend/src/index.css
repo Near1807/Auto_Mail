@@ -1,0 +1,184 @@
+@import "tailwindcss";
+@import "@fontsource-variable/manrope";
+@import "@fontsource-variable/jetbrains-mono";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Papier chaud et vermillon « timbre-poste » ; en sombre, encre brune. */
+:root {
+  --bg: #f6f2ec;
+  --surface: #fffdfa;
+  --surface-2: #f1ebe3;
+  --line: #e4dbd0;
+  --ink: #221c17;
+  --muted: #7a6e63;
+  --accent: #e2552b;
+  --accent-ink: #fff8f2;
+  --accent-soft: #fbe3d8;
+  --ok: #2f8f5b;
+  --ok-soft: #dcf1e3;
+  --warn: #b7791f;
+  --warn-soft: #f8ebcf;
+  --bad: #c2362f;
+  --bad-soft: #f8dcd9;
+  --info: #3f6fb5;
+  --info-soft: #dde8f7;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #161210;
+  --surface: #1f1a17;
+  --surface-2: #2a231f;
+  --line: #3a312b;
+  --ink: #f3ece4;
+  --muted: #a89a8d;
+  --accent: #f2683d;
+  --accent-ink: #1b0f0a;
+  --accent-soft: #3d2219;
+  --ok: #5cc28a;
+  --ok-soft: #1c3427;
+  --warn: #e3b05b;
+  --warn-soft: #3a2e17;
+  --bad: #f07a70;
+  --bad-soft: #42201d;
+  --info: #7fa6e3;
+  --info-soft: #1c2a40;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --font-sans: "Manrope Variable", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+/* Timbre-poste : bord perforé (les trous sont découpés dans la marge intérieure). */
+.stamp {
+  --r: 4px;
+  --gap: 12px;
+  padding: calc(var(--r) * 2.2);
+  background: var(--accent-soft);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    radial-gradient(circle var(--r), #0000 96%, #000) calc(var(--gap) / -2) calc(var(--gap) / -2) / var(--gap) var(--gap) round;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    radial-gradient(circle var(--r), #0000 96%, #000) calc(var(--gap) / -2) calc(var(--gap) / -2) / var(--gap) var(--gap) round;
+}
+.stamp > * {
+  border: 1.5px dashed color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: 4px;
+}
+
+.cm-editor {
+  height: 100%;
+  font-size: 13px;
+}
+.cm-editor.cm-focused {
+  outline: none;
+}
+.cm-scroller {
+  font-family: var(--font-mono) !important;
+}
+
+/* Éditeur visuel (TipTap) */
+.prose-mail {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink);
+  outline: none;
+  min-height: 100%;
+}
+.prose-mail p {
+  margin: 0 0 0.8em;
+}
+.prose-mail h1 {
+  font-size: 1.5em;
+  font-weight: 700;
+  margin: 0.6em 0 0.4em;
+}
+.prose-mail h2 {
+  font-size: 1.25em;
+  font-weight: 700;
+  margin: 0.6em 0 0.4em;
+}
+.prose-mail ul {
+  list-style: disc;
+  padding-left: 1.4em;
+  margin: 0 0 0.8em;
+}
+.prose-mail ol {
+  list-style: decimal;
+  padding-left: 1.4em;
+  margin: 0 0 0.8em;
+}
+.prose-mail a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.prose-mail blockquote {
+  border-left: 3px solid var(--line);
+  padding-left: 0.8em;
+  color: var(--muted);
+}
+.prose-mail p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--muted);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-rise {
+  animation: rise 0.25s ease-out both;
+}
