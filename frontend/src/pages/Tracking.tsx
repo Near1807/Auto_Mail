@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, Download, FolderOpen, MailCheck, MessageSquareReply
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../api";
+import { desktopApi } from "../lib/desktop";
 import { Badge, Button, Card, EmptyState, Input, PageHeader, Segmented, Spinner, Stat } from "../components/ui";
 import { useStore } from "../store";
 import type { Tracking } from "../types";
@@ -129,6 +130,25 @@ export function TrackingPage() {
     }
   };
 
+  const exportCsv = async () => {
+    const desktop = desktopApi();
+    if (!desktop?.save_export) {
+      // Navigateur (dev) : téléchargement classique.
+      const link = document.createElement("a");
+      link.href = api.exportUrl(campaign.id);
+      link.download = `suivi-${campaign.id}.csv`;
+      link.click();
+      return;
+    }
+    try {
+      const r = await desktop.save_export(campaign.id);
+      if (r.ok) toast.success("Suivi exporté", { description: r.path });
+      else if (!r.cancelled) toast.error("Export impossible", { description: r.message });
+    } catch (e) {
+      toast.error("Export impossible", { description: String(e) });
+    }
+  };
+
   const openFolder = async () => {
     try {
       await api.openFolder(campaign.id);
@@ -151,9 +171,7 @@ export function TrackingPage() {
             <Button icon={checking ? <Spinner /> : <MessageSquareReply size={16} />} onClick={checkReplies} disabled={checking || !campaign.draft.label} title={campaign.draft.label ? `Parcourt les fils du libellé « ${campaign.draft.label} »` : "Ajoute un libellé à la campagne pour pouvoir vérifier les réponses"}>
               Vérifier les réponses
             </Button>
-            <a href={api.exportUrl(campaign.id)} download>
-              <Button icon={<Download size={16} />}>Exporter</Button>
-            </a>
+            <Button icon={<Download size={16} />} onClick={exportCsv}>Exporter</Button>
             <Button variant="ghost" icon={<FolderOpen size={16} />} onClick={openFolder}>Ouvrir le dossier</Button>
           </>
         }

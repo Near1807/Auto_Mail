@@ -1,0 +1,82 @@
+name: Build AutoMail.exe
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write # créer la Release et y attacher l'exe
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Front (npm ci + build)
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+
+      - name: Dépendances Python
+        run: python -m pip install -r requirements-build.txt
+
+      - name: Version depuis le tag
+        if: github.ref_type == 'tag'
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart("v")
+          Set-Content -Path core/version.py -Encoding utf8 -Value @(
+            "# Écrit par le workflow de release.",
+            "__version__ = `"$version`""
+          )
+          Get-Content core/version.py
+
+      - name: Tests (pytest)
+        run: python -m pytest -q
+
+      - name: PyInstaller
+        run: pyinstaller AutoMail.spec --noconfirm
+
+      - name: Self-test de l'exe
+        run: |
+          $exe = Resolve-Path dist/AutoMail.exe
+          "Taille : {0:N1} Mo" -f ((Get-Item $exe).Length / 1MB)
+          # Exe sans console : Start-Process -Wait pour récupérer le code de sortie.
+          $p = Start-Process -FilePath $exe -ArgumentList "--self-test" -Wait -PassThru
+          $log = Join-Path $env:APPDATA "AutoMail\logs\automail.log"
+          if (Test-Path $log) { Get-Content $log -Tail 40 }
+          "Code de sortie : $($p.ExitCode)"
+          exit $p.ExitCode
+
+      - name: Artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AutoMail-exe
+          path: dist/AutoMail.exe
+          if-no-files-found: error
+
+      - name: Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Auto Mail ${{ github.ref_name }}
+          files: dist/AutoMail.exe
+          generate_release_notes: true

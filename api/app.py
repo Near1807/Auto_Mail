@@ -22,6 +22,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from core import paths
+from core.version import __version__
 from core import tracking as tracking_mod
 from core.addresses import parse_recipients
 from core.campaigns import Campaign, CampaignStore
@@ -81,12 +82,13 @@ def static_dir() -> Optional[Path]:
 
 
 def open_in_explorer(path: Path) -> None:
+    """Ouvre l'Explorateur sur le dossier ``campagnes``, la campagne sélectionnée."""
     if sys.platform == "win32":
-        os.startfile(str(path))  # type: ignore[attr-defined]
+        subprocess.Popen(["explorer", f"/select,{path}"])
     elif sys.platform == "darwin":
-        subprocess.Popen(["open", str(path)])
+        subprocess.Popen(["open", "-R", str(path)])
     else:
-        subprocess.Popen(["xdg-open", str(path)])
+        subprocess.Popen(["xdg-open", str(path.parent)])
 
 
 def create_app(
@@ -96,7 +98,7 @@ def create_app(
     opener: Callable[[Path], None] = open_in_explorer,
     serve_static: bool = True,
 ) -> FastAPI:
-    app = FastAPI(title="Auto Mail", docs_url="/api/docs", openapi_url="/api/openapi.json")
+    app = FastAPI(title="Auto Mail", version=__version__, docs_url="/api/docs", openapi_url="/api/openapi.json")
     store = CampaignStore(paths.campaigns_dir())
     password_store = passwords or PasswordStore()
     try:
@@ -171,6 +173,18 @@ def create_app(
     @app.exception_handler(tracking_mod.CsvLockedError)
     async def locked_handler(request: Request, error: tracking_mod.CsvLockedError):
         return JSONResponse({"detail": str(error)}, status_code=423)
+
+    @app.get("/api/health")
+    def health():
+        return {"ok": True, "version": __version__}
+
+    @app.post("/api/app/focus")
+    def focus_window():
+        # Appelé par une deuxième instance : la fenêtre déjà ouverte revient au premier plan.
+        callback = getattr(app.state, "on_focus", None)
+        if callback:
+            callback()
+        return {"ok": bool(callback)}
 
     # ------------------------------------------------------------------ réglages
     @app.get("/api/settings")
