@@ -172,7 +172,7 @@ def save(
     path: Path,
     retries: int = 5,
     retry_delay: float = 0.4,
-    sleep=time.sleep,
+    sleep=None,
 ) -> None:
     """Écrit le CSV de façon atomique (fichier temporaire + ``os.replace``).
 
@@ -196,7 +196,7 @@ def save(
             if tmp_name and os.path.exists(tmp_name):
                 os.unlink(tmp_name)
             if attempt < retries:
-                sleep(retry_delay * (attempt + 1))
+                (sleep or time.sleep)(retry_delay * (attempt + 1))
     raise CsvLockedError(path) from last_error
 
 
