@@ -13,7 +13,7 @@ function formatDate(iso: string) {
 }
 
 export function CampaignsPage() {
-  const { campaigns, refreshCampaigns, campaign, selectCampaign, go, job } = useStore();
+  const { campaigns, refreshCampaigns, campaign, selectCampaign, go, job, dismissJob } = useStore();
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [renaming, setRenaming] = useState<CampaignSummary | null>(null);
@@ -63,6 +63,7 @@ export function CampaignsPage() {
     if (!deleting) return;
     try {
       await api.deleteCampaign(deleting.id);
+      if (job?.campaign_id === deleting.id) dismissJob();
       if (campaign?.id === deleting.id) selectCampaign(null);
       await refreshCampaigns();
       toast.success(`« ${deleting.name} » supprimée`);

@@ -24,6 +24,7 @@ type Store = {
   events: JobEvent[];
   followJob: (job: JobSnapshot) => void;
   setJob: (job: JobSnapshot) => void;
+  dismissJob: () => void;
   theme: Settings["theme"];
   setTheme: (t: Settings["theme"]) => void;
 };
@@ -170,6 +171,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [subscribe],
   );
 
+  const dismissJob = useCallback(() => {
+    source.current?.close();
+    setJob(null);
+    setEvents([]);
+  }, []);
+
   const setTheme = useCallback((t: Settings["theme"]) => {
     setThemeState(t);
     applyTheme(t);
@@ -211,10 +218,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const value = useMemo<Store>(
     () => ({
       page, go, settings, setSettings, campaigns, refreshCampaigns, campaign, selectCampaign, reloadCampaign,
-      setCampaign, updateDraft, flushDraft, saveState, job, events, followJob, setJob, theme, setTheme,
+      setCampaign, updateDraft, flushDraft, saveState, job, events, followJob, setJob, dismissJob, theme, setTheme,
     }),
     [page, go, settings, campaigns, refreshCampaigns, campaign, selectCampaign, reloadCampaign, updateDraft,
-      flushDraft, saveState, job, events, followJob, theme, setTheme],
+      flushDraft, saveState, job, events, followJob, dismissJob, theme, setTheme],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

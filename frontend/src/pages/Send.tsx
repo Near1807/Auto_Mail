@@ -50,7 +50,7 @@ function LogLine({ e }: { e: JobEvent }) {
 }
 
 export function SendPage() {
-  const { campaign, updateDraft, flushDraft, settings, setSettings, job, events, followJob, setJob, go, reloadCampaign } = useStore();
+  const { campaign, updateDraft, flushDraft, settings, setSettings, job, events, followJob, setJob, dismissJob, go, reloadCampaign } = useStore();
   const { analysis } = useAnalysis(campaign?.id, campaign?.draft.recipients_raw, job?.state === "done" ? job.sent : 0);
   const [summary, setSummary] = useState<SendSummary | null>(null);
   const [testing, setTesting] = useState(false);
@@ -177,6 +177,7 @@ export function SendPage() {
           </div>
           {!active && (
             <div className="flex justify-end gap-2 border-t border-line px-6 py-3">
+              <Button variant="ghost" onClick={dismissJob}>Masquer</Button>
               <Button variant="soft" onClick={() => { void reloadCampaign(); go("tracking"); }}>Voir le suivi →</Button>
             </div>
           )}
