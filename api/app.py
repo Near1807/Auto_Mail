@@ -507,3 +507,14 @@ def create_app(
     app.state.jobs = jobs
     app.state.store = store
     return app
+
+
+def create_app_from_env(**kwargs) -> FastAPI:
+    """``create_app`` ; avec ``AUTOMAIL_DEMO=1``, un faux Gmail (rien ne part) et un trousseau en mémoire."""
+    if os.environ.get("AUTOMAIL_DEMO") == "1":
+        from . import demo
+
+        kwargs.setdefault("smtp_factory", demo.DemoSmtp)
+        kwargs.setdefault("imap_factory", demo.DemoImap)
+        kwargs.setdefault("passwords", PasswordStore(demo.memory_keyring))
+    return create_app(**kwargs)

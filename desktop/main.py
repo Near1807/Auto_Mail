@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import socket
 import sys
 import threading
@@ -124,9 +125,9 @@ class Bridge:
 
 
 def build_app():
-    from api.app import create_app
+    from api.app import create_app_from_env
 
-    return create_app()
+    return create_app_from_env()
 
 
 def self_test() -> int:
@@ -217,6 +218,9 @@ def run_window() -> int:
                 log.warning("Premier plan impossible : %s", error)
 
         app.state.on_focus = bring_to_front
+        debug_port = os.environ.get("AUTOMAIL_REMOTE_DEBUGGING_PORT")
+        if debug_port:  # tests de bout en bout uniquement (Playwright s'attache à WebView2)
+            webview.settings["REMOTE_DEBUGGING_PORT"] = int(debug_port)
         storage = paths.data_dir() / "webview"
         storage.mkdir(exist_ok=True)
         # private_mode=False : le thème, la campagne ouverte… survivent d'un lancement à l'autre.
