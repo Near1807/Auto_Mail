@@ -1,0 +1,2 @@
+# Fichiers de données de référence : octets exacts, jamais de conversion de fin de ligne.
+tests/fixtures/** -text

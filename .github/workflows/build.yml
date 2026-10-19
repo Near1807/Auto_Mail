@@ -68,6 +68,37 @@ jobs:
           "Code de sortie : $($p.ExitCode)"
           exit $p.ExitCode
 
+      - name: Test de bout en bout dans la vraie fenêtre (WebView2, mode démo)
+        run: |
+          $env:AUTOMAIL_DEMO = "1"
+          $env:AUTOMAIL_DATA_DIR = Join-Path $env:RUNNER_TEMP "automail-e2e"
+          $env:AUTOMAIL_REMOTE_DEBUGGING_PORT = "9222"
+          $app = Start-Process -FilePath (Resolve-Path dist/AutoMail.exe) -PassThru
+          $ready = $false
+          foreach ($i in 1..60) {
+            try { Invoke-RestMethod http://127.0.0.1:9222/json/version | Out-Null; $ready = $true; break } catch { Start-Sleep -Milliseconds 500 }
+          }
+          if (-not $ready) { throw "La fenêtre AutoMail.exe n'expose pas WebView2 sur le port 9222" }
+          Push-Location e2e
+          npm ci --no-audit --no-fund
+          $env:CDP_URL = "http://127.0.0.1:9222"
+          $env:LOG_FILE = Join-Path $env:AUTOMAIL_DATA_DIR "logs\automail.log"
+          node send-flow.mjs
+          $code = $LASTEXITCODE
+          Pop-Location
+          Stop-Process -Id $app.Id -Force -ErrorAction SilentlyContinue
+          $log = Join-Path $env:AUTOMAIL_DATA_DIR "logs\automail.log"
+          if (Test-Path $log) { "--- automail.log ---"; Get-Content $log -Tail 60 }
+          exit $code
+
+      - name: Captures en cas d'échec
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-echecs
+          path: e2e/echec-*.png
+          if-no-files-found: ignore
+
       - name: Artefact
         uses: actions/upload-artifact@v4
         with:

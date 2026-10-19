@@ -9,3 +9,4 @@ build/
 dist/
 frontend/dist/
 node_modules/
+e2e/echec-*.png

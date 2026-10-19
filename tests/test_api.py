@@ -143,3 +143,12 @@ def test_locked_csv_returns_423(env, monkeypatch):
     monkeypatch.setattr(tr.time, "sleep", lambda s: None)
     r = client.patch(f"/api/campaigns/{cid}/tracking", json={"email": "a@b.be", "value": "x"})
     assert r.status_code == 423 and "Excel" in r.json()["detail"]
+
+
+def test_client_error_is_written_to_the_log(env):
+    client, *_ = env
+    r = client.post("/api/client-error", json={"message": "TypeError: x is undefined", "stack": "at SendPage",
+                                                "component_stack": "in SendPage", "page": "send"})
+    assert r.status_code == 200
+    log = (paths.data_dir() / "logs" / "automail.log").read_text(encoding="utf-8")
+    assert "TypeError: x is undefined" in log and "page send" in log

@@ -58,8 +58,15 @@ export function SendPage() {
   const [delay, setDelay] = useState(settings?.delay_seconds ?? 3);
   const logEnd = useRef<HTMLDivElement>(null);
 
-  useEffect(() => setDelay(settings?.delay_seconds ?? 3), [settings?.delay_seconds]);
-  useEffect(() => logEnd.current?.scrollIntoView({ block: "nearest" }), [events.length]);
+  // Corps entre accolades : un effet ne doit rien renvoyer d'autre qu'une fonction de nettoyage.
+  // (Dans WebView2, scrollIntoView() renvoie une Promise : renvoyée ici, React l'appelait
+  // comme nettoyage → « TypeError: p is not a function » → page blanche.)
+  useEffect(() => {
+    setDelay(settings?.delay_seconds ?? 3);
+  }, [settings?.delay_seconds]);
+  useEffect(() => {
+    logEnd.current?.scrollIntoView({ block: "nearest" });
+  }, [events.length]);
 
   if (!campaign) return null;
   const draft = campaign.draft;

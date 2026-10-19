@@ -1,0 +1,4 @@
+﻿email;status;reponse;date;objet;erreur;notes
+ann@exemple.be;Envoyé;Répondu le 2026-10-20;2026-10-18 09:12;Bonjour Ann;;rappeler lundi
+bob@exemple.be;Erreur;;2026-10-18 09:13;Bonjour Bob;"Adresse refusée par le serveur (550) : 5.1.1 ; inconnue";
+cid@exemple.be;Envoyé;;2026-10-18 09:14;"Objet ; avec point-virgule";;

@@ -1,0 +1,12 @@
+{
+  "name": "automail-e2e",
+  "private": true,
+  "type": "module",
+  "description": "Tests de bout en bout : envoi complet en mode démo, dans la vraie fenêtre (WebView2) ou dans Chromium.",
+  "scripts": {
+    "test": "node send-flow.mjs"
+  },
+  "dependencies": {
+    "playwright-core": "1.56.1"
+  }
+}

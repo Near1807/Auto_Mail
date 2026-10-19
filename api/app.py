@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import subprocess
 import sys
@@ -63,6 +64,30 @@ class DraftIn(BaseModel):
 
 class AnalyzeIn(BaseModel):
     raw: Optional[str] = None
+
+
+class ClientErrorIn(BaseModel):
+    message: str = ""
+    stack: str = ""
+    component_stack: str = ""
+    page: str = ""
+
+
+def front_logger() -> logging.Logger:
+    """Logger des erreurs du front, écrit dans ``logs/automail.log`` (même fichier que l'exe)."""
+    from logging.handlers import RotatingFileHandler
+
+    target = paths.data_dir() / "logs" / "automail.log"
+    root = logging.getLogger()
+    already = any(getattr(h, "baseFilename", None) == os.path.abspath(target) for h in root.handlers)
+    if not already:  # en dev (uvicorn), personne n'a encore branché le fichier
+        target.parent.mkdir(parents=True, exist_ok=True)
+        handler = RotatingFileHandler(target, maxBytes=1_000_000, backupCount=3, encoding="utf-8")
+        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+        root.addHandler(handler)
+        if root.level > logging.INFO or root.level == logging.NOTSET:
+            root.setLevel(logging.INFO)
+    return logging.getLogger("automail.front")
 
 
 class CellIn(BaseModel):
@@ -177,6 +202,15 @@ def create_app(
     @app.get("/api/health")
     def health():
         return {"ok": True, "version": __version__}
+
+    @app.post("/api/client-error")
+    def client_error(body: ClientErrorIn):
+        # Un écran a planté côté interface : on garde la trace pour pouvoir corriger.
+        front_logger().error(
+            "Erreur dans l'interface (page %s) : %s\n%s\nComposants :%s",
+            body.page or "?", body.message[:2000], body.stack[:8000], body.component_stack[:4000],
+        )
+        return {"ok": True}
 
     @app.post("/api/app/focus")
     def focus_window():
@@ -507,3 +541,14 @@ def create_app(
     app.state.jobs = jobs
     app.state.store = store
     return app
+
+
+def create_app_from_env(**kwargs) -> FastAPI:
+    """``create_app`` ; avec ``AUTOMAIL_DEMO=1``, un faux Gmail (rien ne part) et un trousseau en mémoire."""
+    if os.environ.get("AUTOMAIL_DEMO") == "1":
+        from . import demo
+
+        kwargs.setdefault("smtp_factory", demo.DemoSmtp)
+        kwargs.setdefault("imap_factory", demo.DemoImap)
+        kwargs.setdefault("passwords", PasswordStore(demo.memory_keyring))
+    return create_app(**kwargs)

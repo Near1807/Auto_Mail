@@ -84,6 +84,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const refreshCampaigns = useCallback(async () => {
     setCampaigns(await api.campaigns());
   }, []);
+  const goRef = useRef(go);
+  goRef.current = go;
+  const refreshCampaignsRef = useRef(refreshCampaigns);
+  refreshCampaignsRef.current = refreshCampaigns;
 
   const flushDraft = useCallback(async () => {
     window.clearTimeout(timer.current);
@@ -143,24 +147,59 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     source.current?.close();
     const es = new EventSource(`/api/jobs/${snapshot.id}/events?after=${after}`);
     source.current = es;
+    let labelSummary = "";
     es.onmessage = (msg) => {
-      const event = JSON.parse(msg.data) as JobEvent;
+      let event: JobEvent;
+      try {
+        event = JSON.parse(msg.data) as JobEvent;
+      } catch {
+        return; // trame incomplète : EventSource renverra la suite
+      }
       setEvents((prev) => (prev.some((e) => e.seq === event.seq) ? prev : [...prev, event]));
-      setJob(event.progress);
-      if (event.type === "warning") toast.warning(event.message);
-      if (event.type === "label") (event.ok ? toast.success : toast.error)(event.message);
+      if (event.progress) setJob(event.progress);
+      if (event.type === "warning") toast.warning(event.message ?? "Avertissement pendant l'envoi");
+      if (event.type === "label") {
+        labelSummary = event.message ?? "";
+        if (!event.ok) toast.warning(labelSummary);
+      }
       if (event.type === "done") {
         es.close();
-        if (event.ok) toast.success(event.message, { description: `${event.progress.sent} envoyé(s), ${event.progress.errors} erreur(s)` });
-        else toast.error(event.message);
-        void refreshCampaigns();
+        source.current = null;
+        finishJob(event, labelSummary);
       }
     };
     es.onerror = () => {
       // EventSource se reconnecte seul (Last-Event-ID) ; on ferme seulement si la tâche est finie.
       if (es.readyState === EventSource.CLOSED) source.current = null;
     };
-  }, [refreshCampaigns]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** Fin d'envoi : récapitulatif, puis retour à la page principale (la sidebar reste utilisable). */
+  const finishJob = (event: JobEvent, labelSummary: string) => {
+    const progress = event.progress;
+    const sent = progress?.sent ?? 0;
+    const errors = progress?.errors ?? 0;
+    const parts = [`${sent} envoyé${sent > 1 ? "s" : ""}`, `${errors} erreur${errors > 1 ? "s" : ""}`];
+    if (progress?.skipped) parts.push(`${progress.skipped} ignoré${progress.skipped > 1 ? "s" : ""}`);
+    const description = (
+      <>
+        <span className="block font-semibold">{parts.join(" · ")}</span>
+        {labelSummary && <span className="block">{labelSummary}</span>}
+      </>
+    );
+    const title = event.message || (progress?.state === "cancelled" ? "Envoi annulé." : "Envoi terminé.");
+    const options = {
+      description,
+      duration: 12000,
+      action: { label: "Voir le suivi", onClick: () => goRef.current("tracking") },
+    };
+    if (event.ok === false) toast.error(title, options);
+    else if (errors > 0) toast.warning(title, options);
+    else toast.success(title, options);
+    void refreshCampaignsRef.current();
+    window.setTimeout(() => goRef.current("campaigns"), 1200);
+  };
 
   const followJob = useCallback(
     (snapshot: JobSnapshot) => {

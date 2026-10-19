@@ -23,7 +23,9 @@ function ReplyCell({ value, onSave }: { value: string; onSave: (v: string) => Pr
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const [saving, setSaving] = useState(false);
-  useEffect(() => setDraft(value), [value]);
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
 
   const commit = async () => {
     setEditing(false);
