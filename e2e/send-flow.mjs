@@ -18,6 +18,7 @@ const SCENARIOS = {
   pause: { raw: "a1@exemple.be a2@exemple.be a3@exemple.be a4@exemple.be", delay: 1, pause: true, expect: { sent: 4, errors: 0 } },
   annulation: { raw: Array.from({ length: 8 }, (_, i) => `x${i}@exemple.be`).join("\n"), delay: 2, cancel: true, expect: { cancelled: true } },
   zero: { raw: "ann@exemple.be", alreadySent: true, expect: { nothing: true } },
+  plantage: { crash: true },
 };
 
 const wanted = (process.env.SCENARIOS || Object.keys(SCENARIOS).join(",")).split(",");
@@ -32,11 +33,27 @@ async function open() {
   }
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
   const page = await (await browser.newContext({ viewport: { width: 1280, height: 820 } })).newPage();
+  if (process.env.SIMULATE_WEBVIEW2 !== "0") {
+    // Comme le WebView2 récent de Windows : scrollIntoView() renvoie une Promise.
+    await page.addInitScript(() => {
+      const original = Element.prototype.scrollIntoView;
+      Element.prototype.scrollIntoView = function (...args) {
+        const result = original.apply(this, args);
+        return result instanceof Promise ? result : Promise.resolve();
+      };
+    });
+  }
   await page.goto(process.env.APP_URL || "http://127.0.0.1:8765");
   return { browser, page, close: () => browser.close() };
 }
 
 const { page, close } = await open();
+// Diagnostic : ce que renvoie scrollIntoView() dans ce navigateur (Promise dans le WebView2 récent).
+console.log("navigateur :", await page.evaluate(() => navigator.userAgent));
+console.log("scrollIntoView() renvoie :", await page.evaluate(() => {
+  const r = document.body.scrollIntoView({ block: "nearest" });
+  return r instanceof Promise ? "une Promise" : String(r);
+}));
 page.on("pageerror", (e) => jsErrors.push(String(e.stack || e)));
 // Une réponse HTTP 4xx attendue (ex. envoi refusé) n'est pas une erreur JavaScript.
 page.on("console", (m) => m.type() === "error" && !m.text().startsWith("Failed to load resource") && jsErrors.push(`console: ${m.text()}`));
@@ -62,7 +79,41 @@ async function checkNavigation(label) {
   }
 }
 
+async function stopRunningJob() {
+  // Un scénario précédent en échec peut avoir laissé un envoi actif.
+  const current = (await api("GET", "/api/jobs/current")).data;
+  if (current && ["running", "paused", "pending"].includes(current.state)) {
+    await api("POST", `/api/jobs/${current.id}/cancel`);
+    for (let i = 0; i < 50 && ["running", "paused", "pending"].includes((await api("GET", "/api/jobs/current")).data?.state); i++) await page.waitForTimeout(200);
+  }
+}
+
+async function crashScenario() {
+  const errorsBefore = jsErrors.length;
+  await page.evaluate(() => localStorage.setItem("automail-page", "campaigns"));
+  await page.reload();
+  await heading("Campagnes").waitFor();
+  await page.evaluate(() => { window.__automailCrash = "settings"; });
+  await sidebar("Réglages").click();
+  await page.getByText("Cet écran a rencontré un problème").waitFor().catch(() => { throw new Error("plantage : pas de message d'erreur lisible"); });
+  if (!(await sidebar("Campagnes").isVisible())) throw new Error("plantage : la sidebar a disparu");
+  await page.evaluate(() => { window.__automailCrash = undefined; });
+  await page.getByRole("button", { name: "Retour à l'accueil" }).click();
+  await heading("Campagnes").waitFor({ timeout: 5000 }).catch(() => { throw new Error("plantage : « Retour à l'accueil » ne ramène pas aux campagnes"); });
+  await checkNavigation("plantage");
+  if (process.env.LOG_FILE) {
+    const { readFileSync } = await import("node:fs");
+    await page.waitForTimeout(500);
+    const log = readFileSync(process.env.LOG_FILE, "utf8");
+    if (!log.includes("Plantage de test sur l'écran « settings »")) throw new Error(`plantage : l'erreur n'est pas dans ${process.env.LOG_FILE}`);
+  }
+  // L'erreur volontaire est attendue : on la retire des erreurs JavaScript « inattendues ».
+  jsErrors.splice(errorsBefore);
+}
+
 async function run(name, s) {
+  await stopRunningJob();
+  if (s.crash) return crashScenario();
   const errorsBefore = jsErrors.length;
   await api("PUT", "/api/settings", { email: "demo@gmail.com", display_name: "Démo", delay_seconds: s.delay ?? 0 });
   await api("PUT", "/api/account/password", { password: "demo" });

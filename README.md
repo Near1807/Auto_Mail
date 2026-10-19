@@ -80,6 +80,19 @@ Tests (aucun vrai mail n'est jamais envoyé : SMTP et IMAP sont simulés, le ré
 python -m pytest
 ```
 
+Test de bout en bout (envoi complet en mode démo, dans un navigateur) : lance le back en mode
+démo comme ci-dessus sur le port 8765, puis
+
+```bash
+npm --prefix e2e ci
+npx --prefix e2e playwright-core install chromium   # ou CHROMIUM_PATH=<chemin de Chromium>
+node e2e/send-flow.mjs
+```
+
+En CI, le même test pilote la vraie fenêtre `AutoMail.exe` (WebView2) : envoi complet, avec
+erreurs, pause/reprise, annulation, 0 destinataire, et un écran qui plante. Il vérifie le
+récapitulatif de fin, le retour à la page principale et la navigation par la sidebar.
+
 Organisation :
 
 | Dossier | Rôle |
@@ -90,6 +103,8 @@ Organisation :
 | `desktop/`, `automail.py` | fenêtre pywebview, instance unique, `--self-test` |
 | `AutoMail.spec` | configuration PyInstaller |
 | `scripts/make_icon.py` | régénère `assets/icon.ico` (nécessite Pillow) |
+| `e2e/` | test de bout en bout (Playwright) |
+| `tests/fixtures/v1.0.0/` | données au format 1.0.0 : garantissent qu'une mise à jour les lit à l'identique |
 
 ## Construire l'exe en local (Windows)
 

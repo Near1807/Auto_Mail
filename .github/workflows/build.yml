@@ -82,6 +82,7 @@ jobs:
           Push-Location e2e
           npm ci --no-audit --no-fund
           $env:CDP_URL = "http://127.0.0.1:9222"
+          $env:LOG_FILE = Join-Path $env:AUTOMAIL_DATA_DIR "logs\automail.log"
           node send-flow.mjs
           $code = $LASTEXITCODE
           Pop-Location

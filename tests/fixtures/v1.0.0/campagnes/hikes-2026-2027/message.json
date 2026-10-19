@@ -1,0 +1,12 @@
+{
+  "name": "Hikes 2026-2027",
+  "created": "2026-10-17T20:00:00",
+  "subject": "Bonjour {prenom}",
+  "mode": "html",
+  "text": "",
+  "html": "<p>Bonjour {prenom},</p>",
+  "recipients_raw": "email\tprenom\nann@exemple.be\tAnn\nbob@exemple.be\tBob",
+  "label": "Scouts/Hikes 2026-2027",
+  "preview_email": "ann@exemple.be",
+  "updated": "2026-10-18T09:00:00"
+}
